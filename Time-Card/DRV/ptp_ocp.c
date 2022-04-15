@@ -304,6 +304,13 @@ struct ptp_ocp_signal {
 	bool		running;
 };
 
+struct art_reg {
+	uint64_t art_unique_id;
+	uint8_t revision;
+	uint8_t __pad0[3];
+	uint8_t oscillator_model;
+};
+
 #define OCP_BOARD_ID_LEN		13
 #define OCP_SERIAL_LEN			6
 
@@ -314,6 +321,7 @@ struct ptp_ocp {
 	struct mutex		mutex;
 	struct ocp_reg __iomem	*reg;
 	struct tod_reg __iomem	*tod;
+	struct art_reg __iomem	*art;
 	struct pps_reg __iomem	*pps_to_ext;
 	struct pps_reg __iomem	*pps_to_clk;
 	struct gpio_reg __iomem	*pps_select;
@@ -485,6 +493,10 @@ static struct ocp_resource ocp_fb_resource[] = {
 	{
 		OCP_MEM_RESOURCE(reg),
 		.offset = 0x01000000, .size = 0x10000,
+	},
+	{
+		OCP_MEM_RESOURCE(art),	
+		.offset = 0x0110000, .size = 0x20,
 	},
 	{
 		OCP_EXT_RESOURCE(ts0),
@@ -2363,6 +2375,10 @@ ptp_ocp_art_board_init(struct ptp_ocp *bp, struct ocp_resource *r)
 	bp->fw_cap = OCP_CAP_BASIC;
 	bp->fw_tag = 2;
 	bp->sma_op = &ocp_art_sma_op;
+
+	printk("Unique ID 0x%x\n",ioread32(&bp->art->art_unique_id));
+	printk("revision 0x%x\n", ioread8(&bp->art->revision) & 0xF);
+	printk("oscillator_model 0x%x\n", ioread32(&bp->art->oscillator_model) & 0xFF);
 
 	ptp_ocp_sma_init(bp);
 

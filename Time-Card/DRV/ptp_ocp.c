@@ -242,6 +242,11 @@ struct frequency_reg {
 	u32	ctrl;
 	u32	status;
 };
+
+struct board_config_reg {
+	u32 mro50_serial_activate;
+};
+
 #define FREQ_STATUS_VALID	BIT(31)
 #define FREQ_STATUS_ERROR	BIT(30)
 #define FREQ_STATUS_OVERRUN	BIT(29)
@@ -307,7 +312,7 @@ struct ptp_ocp_signal {
 };
 
 #define OCP_BOARD_ID_LEN		13
-#define OCP_SERIAL_LEN			7
+#define OCP_SERIAL_LEN			6
 
 struct ptp_ocp {
 	struct pci_dev		*pdev;
@@ -318,7 +323,7 @@ struct ptp_ocp {
 	struct tod_reg __iomem	*tod;
 	struct pps_reg __iomem	*pps_to_ext;
 	struct pps_reg __iomem	*pps_to_clk;
-	struct gpio_reg __iomem	*board_config;
+	struct board_config_reg __iomem	*board_config;
 	struct gpio_reg __iomem	*pps_select;
 	struct gpio_reg __iomem	*sma_map1;
 	struct gpio_reg __iomem	*sma_map2;
@@ -352,7 +357,6 @@ struct ptp_ocp {
 	int			id;
 	int			n_irqs;
 	int			mro50_port;
-	int			art_config;
 	int			gnss_port;
 	int			gnss2_port;
 	int			mac_port;	/* miniature atomic clock */
@@ -707,6 +711,7 @@ struct ocp_art_osc_reg {
 	u32	adjust;
 	u32	temp;
 };
+
 #define MRO50_CTRL_ENABLE		BIT(0)
 #define MRO50_CTRL_LOCK			BIT(1)
 #define MRO50_CTRL_READ_CMD		BIT(2)
@@ -842,7 +847,7 @@ static struct ocp_resource ocp_art_resource[] = {
 		.offset = 0x00190000, .irq_vec = 7,
 	},
 	{
-		OCP_MEM_RESOURCE(art_config),
+		OCP_MEM_RESOURCE(board_config),
 		.offset = 0x210000, .size = 0x1000,
 	},
 	{
@@ -2255,15 +2260,14 @@ ptp_ocp_mro50_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 
 	switch (cmd) {
 	case MRO50_BOARD_CONFIG_READ:
-		val = ioread32(&bp->board_config);
-		printk("read board config: 0x%X",val);
+		val = ioread32(&bp->board_config->mro50_serial_activate);
+		err = 0;
 		break;
 	case MRO50_BOARD_CONFIG_WRITE:
 		if (get_user(val, (u32 __user *)arg))
 			return -EFAULT;
-		iowrite32(val,&bp->board_config);
-		printk("write board config: 0x%X",val);
-		break;
+		iowrite32(val, &bp->board_config->mro50_serial_activate);
+		return 0;
 	case MRO50_READ_FINE:
 		err = ptp_ocp_mro50_read(bp, MRO50_OP_READ_FINE, &val);
 		break;

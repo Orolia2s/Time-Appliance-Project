@@ -2268,9 +2268,15 @@ __ptp_ocp_mro50_wait_cmd(struct ocp_art_osc_reg __iomem *reg, u32 done)
 
 	for (i = 0; i < 100; i++) {
 		ctrl = ioread32(&reg->ctrl);
+		if (ctrl & 0x70000000) {
+			printk("Error: bits ctrl 0x%08X", ctrl);
+		}
 		if (ctrl & done)
 			break;
 		usleep_range(100, 1000);
+	}
+	if (!(ctrl & done)) {
+		printk("Error: ctrl is 0x%x, done is 0x%x", ctrl, done);
 	}
 	return ctrl & done ? 0 : -ETIMEDOUT;
 }
@@ -2308,6 +2314,10 @@ ptp_ocp_mro50_read(struct ptp_ocp *bp, u32 ctrl, u32 *val)
 	err = __ptp_ocp_mro50_read_locked(bp->osc, ctrl, val);
 	mutex_unlock(&bp->mutex);
 
+	if (err) {
+		printk("Error reading %d", err);
+	}
+
 	return err;
 }
 
@@ -2333,6 +2343,7 @@ ptp_ocp_mro50_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 	u32 val;
 	int err;
 
+	err = 0;
 	mro50 = file->private_data;
 	bp = container_of(mro50, struct ptp_ocp, mro50);
 

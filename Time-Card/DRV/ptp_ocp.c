@@ -40,7 +40,8 @@
 #define MRO50_WRITE_EEPROM_BLOB	_IOW('M', 8, u8 *)
 #define MRO50_READ_EXTENDED_EEPROM_BLOB	_IOR('M', 9, u8 *)
 #define MRO50_WRITE_EXTENDED_EEPROM_BLOB	_IOW('M', 9, u8 *)
-
+#define MRO50_READ_CELL_TEMP	_IOR('M', 10, u32 *)
+#define MRO50_READ_LASER_TEMP	_IOR('M', 11, u32 *)
 
 #endif /* MRO50_IOCTL_H */
 /*---------------------------------------------------------------------------*/
@@ -729,7 +730,10 @@ struct ocp_art_osc_reg {
 	u32	value;
 	u32	adjust;
 	u32	temp;
+	u32	cell_temp;
+	u32	laser_temp;
 };
+
 #define MRO50_CTRL_ENABLE		BIT(0)
 #define MRO50_CTRL_LOCK			BIT(1)
 #define MRO50_CTRL_READ_CMD		BIT(2)
@@ -2385,6 +2389,14 @@ ptp_ocp_mro50_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 		break;
 	case MRO50_READ_TEMP:
 		val = ioread32(&bp->osc->temp);
+		err = 0;
+		break;
+	case MRO50_READ_CELL_TEMP:
+		val = ioread32(&bp->osc->cell_temp);
+		err = 0;
+		break;
+	case MRO50_READ_LASER_TEMP:
+		val = ioread32(&bp->osc->laser_temp);
 		err = 0;
 		break;
 	case MRO50_READ_CTRL:

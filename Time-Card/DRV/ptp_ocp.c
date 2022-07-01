@@ -4023,7 +4023,7 @@ art_temp_table_read(struct file *filp, struct kobject *kobj,
 		count = size - off;
 
 	// the configuration is in the very beginning of the EEPROM
-	err = nvmem_device_read(nvmem, 0x7E + off, count,> buf);
+	err = nvmem_device_read(nvmem, 0x7E + off, count, buf);
 	if (err != count) {
 		err = -EFAULT;
 		goto out;

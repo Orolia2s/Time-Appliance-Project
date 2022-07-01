@@ -4008,7 +4008,7 @@ art_temp_table_read(struct file *filp, struct kobject *kobj,
 {
 	struct ptp_ocp *bp = dev_get_drvdata(kobj_to_dev(kobj));
 	struct nvmem_device *nvmem = ptp_ocp_nvmem_device_get(bp, NULL);
-	size_t size = OCP_ART_CONFIG_SIZE;
+	size_t size = OCP_ART_TEMP_TABLE_SIZE;
 	ssize_t err;
 
 	if (IS_ERR(nvmem))

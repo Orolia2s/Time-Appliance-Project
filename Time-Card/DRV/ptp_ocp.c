@@ -790,6 +790,14 @@ static struct ocp_resource ocp_art_resource[] = {
 		.offset = 0x00160000 + 0x1000, .irq_vec = 3,
 	},
 	{
+		OCP_SERIAL_RESOURCE(gnss2_port),
+		.offset = 0x00170000, .irq_vec = 5,
+	},
+	{
+		OCP_SERIAL_RESOURCE(nmea_port),
+		.offset = 0x00180000, .irq_vec = 6,
+	},
+	{
 		OCP_MEM_RESOURCE(art_sma),
 		.offset = 0x003C0000, .size = 0x1000,
 	},

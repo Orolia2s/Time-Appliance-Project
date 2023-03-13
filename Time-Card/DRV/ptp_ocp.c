@@ -2019,7 +2019,7 @@ ptp_ocp_ts_irq(int irq, void *priv)
 	struct ptp_ocp_ext_src *ext = priv;
 	struct ts_reg __iomem *reg = ext->mem;
 	struct ptp_clock_event ev;
-	u32 sec, nsec;
+	u32 sec, nsec, data_width;
 
 	if (ext == ext->bp->pps) {
 		if (ext->bp->pps_req_map & OCP_REQ_PPS) {
@@ -2034,6 +2034,7 @@ ptp_ocp_ts_irq(int irq, void *priv)
 	/* XXX should fix API - this converts s/ns -> ts -> s/ns */
 	sec = ioread32(&reg->time_sec);
 	nsec = ioread32(&reg->time_ns);
+	data_width = ioread32(&reg->data_width);
 
 	ev.type = PTP_CLOCK_EXTTS;
 	ev.index = ext->info->index;
@@ -2191,6 +2192,17 @@ ptp_ocp_nmea_out_init(struct ptp_ocp *bp)
 	iowrite32(0, &bp->nmea_out->ctrl);		/* disable */
 	iowrite32(3, &bp->nmea_out->uart_baud);		/* 9600 */
 	iowrite32(1, &bp->nmea_out->ctrl);		/* enable */
+}
+
+static void
+ptp_ocp_etendard_init(struct ptp_ocp *bp)
+{
+	struct ts_reg __iomem *ts_reg = bp->pps->mem;
+	
+	if (!bp->pps)
+		return;
+
+	iowrite32(999995, &ts_reg->data_width);
 }
 
 static void
@@ -2533,6 +2545,7 @@ ptp_ocp_art_board_init(struct ptp_ocp *bp, struct ocp_resource *r)
 	bp->sma_op = &ocp_art_sma_op;
 
 	ptp_ocp_sma_init(bp);
+	ptp_ocp_etendard_init(bp);
 
 	err = ptp_ocp_register_mro50(bp);
 	if (!err)
@@ -3784,6 +3797,44 @@ tod_correction_store(struct device *dev, struct device_attribute *attr,
 }
 static DEVICE_ATTR_RW(tod_correction);
 
+static ssize_t
+pps_width_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct ptp_ocp *bp = dev_get_drvdata(dev);
+	struct ts_reg __iomem *ts_reg = bp->pps->mem;
+	u32 data_width;
+
+	data_width = ioread32(&ts_reg->data_width);
+	data_width += 5;
+
+	return sysfs_emit(buf, "%d\n", data_width);
+}
+
+static ssize_t
+pps_width_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct ptp_ocp *bp = dev_get_drvdata(dev);
+	struct ts_reg __iomem *ts_reg = bp->pps->mem;
+	unsigned long flags;
+	u32 val;
+	int err;
+
+	err = kstrtou32(buf, 0, &val);
+	if (err)
+		return err;
+	if (val > 0x3b9ac9fb)
+		return -EINVAL;
+
+	val += -5;
+
+	spin_lock_irqsave(&bp->lock, flags);
+	iowrite32(val, &ts_reg->data_width);
+	spin_unlock_irqrestore(&bp->lock, flags);
+
+	return count;
+}
+static DEVICE_ATTR_RW(pps_width);
+
 #define _DEVICE_SIGNAL_GROUP_ATTRS(_nr)					\
 	static struct attribute *fb_timecard_signal##_nr##_attrs[] = {	\
 		&dev_attr_signal##_nr##_signal.attr.attr,		\
@@ -4100,6 +4151,7 @@ static const struct ocp_attr_group fb_timecard_groups[] = {
 };
 
 static struct attribute *art_timecard_attrs[] = {
+	&dev_attr_pps_width.attr,
 	&dev_attr_serialnum.attr,
 	&dev_attr_clock_source.attr,
 	&dev_attr_utc_tai_offset.attr,

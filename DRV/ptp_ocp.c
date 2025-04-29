@@ -5613,8 +5613,7 @@ ptp_ocp_detach(struct ptp_ocp *bp)
 		pci_free_irq_vectors(bp->pdev);
 	if (bp->ptp)
 		ptp_clock_unregister(bp->ptp);
-	if (bp->ptm)
-		kfree(bp->ptm);
+	
 	kfree(bp->ptp_info.pin_config);
 	device_unregister(&bp->dev);
 }

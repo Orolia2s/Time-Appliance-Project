@@ -2150,7 +2150,7 @@ fail:
 }
 
 static int
-ptp_ocp_firstchild(struct device *dev, void *data)
+ptp_ocp_firstchild(struct device *, const void *)
 {
 	return 1;
 }

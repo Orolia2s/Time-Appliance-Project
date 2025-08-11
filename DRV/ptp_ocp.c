@@ -1123,14 +1123,23 @@ static struct ocp_resource ocp_art_resource[] = {
 	{
 		OCP_SERIAL_RESOURCE(port[PORT_GNSS]),
 		.offset = 0x00160000 + 0x1000, .irq_vec = 3,
+		.extra = &(struct ptp_ocp_serial_port) {
+			.baud = 115200,
+		},
 	},
 	{
 		OCP_SERIAL_RESOURCE(port[PORT_GNSS2]),
 		.offset = 0x00170000, .irq_vec = 5,
+		.extra = &(struct ptp_ocp_serial_port) {
+			.baud = 115200,
+		},
 	},
 	{
 		OCP_SERIAL_RESOURCE(port[PORT_NMEA]),
 		.offset = 0x00180000, .irq_vec = 6,
+		.extra = &(struct ptp_ocp_serial_port) {
+			.baud = 115200,
+		},
 	},
 	{
 		OCP_MEM_RESOURCE(art_sma),

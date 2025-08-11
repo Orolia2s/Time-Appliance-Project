@@ -1123,6 +1123,9 @@ static struct ocp_resource ocp_art_resource[] = {
 	{
 		OCP_SERIAL_RESOURCE(port[PORT_GNSS]),
 		.offset = 0x00160000 + 0x1000, .irq_vec = 3,
+		.extra = &(struct ptp_ocp_serial_port) {
+			.baud = 115200,
+		},
 	},
 	{
 		OCP_MEM_RESOURCE(art_sma),
@@ -5613,7 +5616,7 @@ ptp_ocp_detach(struct ptp_ocp *bp)
 		pci_free_irq_vectors(bp->pdev);
 	if (bp->ptp)
 		ptp_clock_unregister(bp->ptp);
-	
+
 	kfree(bp->ptp_info.pin_config);
 	device_unregister(&bp->dev);
 }

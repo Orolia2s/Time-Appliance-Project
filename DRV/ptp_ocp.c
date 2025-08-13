@@ -5426,7 +5426,7 @@ ptp_ocp_complete(struct ptp_ocp *bp)
 
 	pps = pps_lookup_dev(bp->ptp);
 	if (pps)
-		ptp_ocp_symlink(bp, pps->dev, "pps");
+		ptp_ocp_symlink(bp, &pps->dev, "pps");
 
 	if (bp->mro50.name)
 		ptp_ocp_symlink(bp, bp->mro50.this_device, "mro50");

@@ -4841,6 +4841,7 @@ static const struct ocp_attr_group fb_timecard_groups[] = {
 static struct attribute *art_timecard_attrs[] = {
 	&dev_attr_serialnum.attr,
 	&dev_attr_clock_source.attr,
+	&dev_attr_available_clock_sources.attr,
 	&dev_attr_utc_tai_offset.attr,
 	&dev_attr_ts_window_adjust.attr,
 	&dev_attr_sma1.attr,

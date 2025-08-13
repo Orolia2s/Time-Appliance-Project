@@ -1679,11 +1679,7 @@ ptp_ocp_syncdevicetime(ktime_t *device_time,
 
 	*device_time = t1;
 
-#if IS_ENABLED(CONFIG_X86_TSC) && !defined(CONFIG_UML)
-	*system_counterval = convert_art_ns_to_tsc(ptm_master_time);
-#else
 	*system_counterval = (struct system_counterval_t) { };
-#endif
 
 	/* store T4 & T1 for next request */
 	bp->ptm_t4_prev = (((u64) ioread32(&reg->t4_time[0]) << 32) |

@@ -1920,7 +1920,12 @@ ptp_ocp_estimate_pci_timing(struct ptp_ocp *bp)
 
 		delay = min(delay, end - start);
 	}
-	bp->ts_window_adjust = (delay >> 5) * 3;
+	if (delay != U64_MAX)
+		bp->ts_window_adjust = (delay >> 5) * 3;
+	else {
+		bp->ts_window_adjust = 0;
+		pr_warn(KBUILD_MODNAME ": Unable to estimate PCI timing, PTP_SYS_OFFSET_EXTENDED's system timestamps will not be adjusted\n");
+	}
 }
 
 static int

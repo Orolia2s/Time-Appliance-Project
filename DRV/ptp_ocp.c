@@ -1902,30 +1902,24 @@ ptp_ocp_watchdog(struct timer_list *t)
 static void
 ptp_ocp_estimate_pci_timing(struct ptp_ocp *bp)
 {
-	ktime_t start, end, delay = U64_MAX;
+	ktime_t start, end;
+	s64 delay_ns = U32_MAX; // = 4.29 s (no need for a higher value)
 	u32 ctrl;
 	int i;
 
 	for (i = 0; i < 3; i++) {
 		ctrl = ioread32(&bp->reg->ctrl);
-		ctrl = OCP_CTRL_READ_TIME_REQ | OCP_CTRL_ENABLE;
 
+		ctrl = OCP_CTRL_READ_TIME_REQ | OCP_CTRL_ENABLE;
 		iowrite32(ctrl, &bp->reg->ctrl);
 
-		start = ktime_get_raw_ns();
-
+		start = ktime_get_raw();
 		ctrl = ioread32(&bp->reg->ctrl);
+		end = ktime_get_raw();
 
-		end = ktime_get_raw_ns();
-
-		delay = min(delay, end - start);
+		delay_ns = min(delay_ns, ktime_to_ns(end - start));
 	}
-	if (delay != U64_MAX)
-		bp->ts_window_adjust = (delay >> 5) * 3;
-	else {
-		bp->ts_window_adjust = 0;
-		pr_warn(KBUILD_MODNAME ": Unable to estimate PCI timing, PTP_SYS_OFFSET_EXTENDED's system timestamps will not be adjusted\n");
-	}
+	bp->ts_window_adjust = (delay_ns >> 5) * 3; // divide by ~10
 }
 
 static int

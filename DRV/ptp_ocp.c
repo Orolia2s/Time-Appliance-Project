@@ -1799,7 +1799,7 @@ ptp_ocp_verify(struct ptp_clock_info *ptp_info, unsigned pin,
 		 * channels 1..4 are the frequency generators.
 		 */
 		if (chan)
-			snprintf(buf, sizeof(buf), "OUT: GEN%d", chan);
+			snprintf(buf, sizeof(buf), "OUT: GEN%u", chan);
 		else
 			snprintf(buf, sizeof(buf), "OUT: PHC");
 		break;
@@ -1902,25 +1902,24 @@ ptp_ocp_watchdog(struct timer_list *t)
 static void
 ptp_ocp_estimate_pci_timing(struct ptp_ocp *bp)
 {
-	ktime_t start, end, delay = U64_MAX;
+	ktime_t start, end;
+	s64 delay_ns = U32_MAX; // = 4.29 s (no need for a higher value)
 	u32 ctrl;
 	int i;
 
 	for (i = 0; i < 3; i++) {
 		ctrl = ioread32(&bp->reg->ctrl);
-		ctrl = OCP_CTRL_READ_TIME_REQ | OCP_CTRL_ENABLE;
 
+		ctrl = OCP_CTRL_READ_TIME_REQ | OCP_CTRL_ENABLE;
 		iowrite32(ctrl, &bp->reg->ctrl);
 
-		start = ktime_get_raw_ns();
-
+		start = ktime_get_raw();
 		ctrl = ioread32(&bp->reg->ctrl);
+		end = ktime_get_raw();
 
-		end = ktime_get_raw_ns();
-
-		delay = min(delay, end - start);
+		delay_ns = min(delay_ns, ktime_to_ns(end - start));
 	}
-	bp->ts_window_adjust = (delay >> 5) * 3;
+	bp->ts_window_adjust = (delay_ns >> 5) * 3; // divide by ~10
 }
 
 static int
@@ -2305,7 +2304,7 @@ ptp_ocp_devlink_info_get(struct devlink *devlink, struct devlink_info_req *req,
 #endif
 
 	fw_image = bp->fw_loader ? "loader" : "fw";
-	sprintf(buf, "%d.%d", bp->fw_tag, bp->fw_version);
+	sprintf(buf, "%hhu.%hu", bp->fw_tag, bp->fw_version);
 	err = devlink_info_version_running_put(req, fw_image, buf);
 	if (err)
 		return err;
@@ -3796,7 +3795,7 @@ signal_show(struct device *dev, struct device_attribute *attr, char *buf)
 	i = (uintptr_t)ea->var;
 	signal = &bp->signal[i];
 
-	count = sysfs_emit(buf, "%llu %d %llu %d", signal->period,
+	count = sysfs_emit(buf, "%lli %i %lli %i", signal->period,
 			   signal->duty, signal->phase, signal->polarity);
 
 	ts = ktime_to_timespec64(signal->start);
@@ -3830,7 +3829,7 @@ period_show(struct device *dev, struct device_attribute *attr, char *buf)
 	struct ptp_ocp *bp = dev_get_drvdata(dev);
 	int i = (uintptr_t)ea->var;
 
-	return sysfs_emit(buf, "%llu\n", bp->signal[i].period);
+	return sysfs_emit(buf, "%lli\n", bp->signal[i].period);
 }
 static EXT_ATTR_RO(signal, period, 0);
 static EXT_ATTR_RO(signal, period, 1);
@@ -3844,7 +3843,7 @@ phase_show(struct device *dev, struct device_attribute *attr, char *buf)
 	struct ptp_ocp *bp = dev_get_drvdata(dev);
 	int i = (uintptr_t)ea->var;
 
-	return sysfs_emit(buf, "%llu\n", bp->signal[i].phase);
+	return sysfs_emit(buf, "%lli\n", bp->signal[i].phase);
 }
 static EXT_ATTR_RO(signal, phase, 0);
 static EXT_ATTR_RO(signal, phase, 1);
@@ -3889,7 +3888,7 @@ start_show(struct device *dev, struct device_attribute *attr, char *buf)
 	struct timespec64 ts;
 
 	ts = ktime_to_timespec64(bp->signal[i].start);
-	return sysfs_emit(buf, "%llu.%lu\n", ts.tv_sec, ts.tv_nsec);
+	return sysfs_emit(buf, "%lli.%li\n", ts.tv_sec, ts.tv_nsec);
 }
 static EXT_ATTR_RO(signal, start, 0);
 static EXT_ATTR_RO(signal, start, 1);
@@ -3996,7 +3995,7 @@ utc_tai_offset_show(struct device *dev,
 {
 	struct ptp_ocp *bp = dev_get_drvdata(dev);
 
-	return sysfs_emit(buf, "%d\n", bp->utc_tai_offset);
+	return sysfs_emit(buf, "%u\n", bp->utc_tai_offset);
 }
 
 static ssize_t
@@ -4026,7 +4025,7 @@ external_pps_cable_delay_show(struct device *dev,
 	u32 val;
 
 	val = ioread32(&bp->pps_to_ext->cable_delay);
-	return sysfs_emit(buf, "%d\n", val);
+	return sysfs_emit(buf, "%u\n", val);
 }
 
 static ssize_t
@@ -4059,7 +4058,7 @@ internal_pps_cable_delay_show(struct device *dev,
 	u32 val;
 
 	val = ioread32(&bp->pps_to_clk->cable_delay);
-	return sysfs_emit(buf, "%d\n", val);
+	return sysfs_emit(buf, "%u\n", val);
 }
 
 static ssize_t
@@ -4093,7 +4092,7 @@ holdover_show(struct device *dev, struct device_attribute *attr, char *buf)
 	if (bp->pps_select)
 		val = ioread32(&bp->pps_select->gpio2) & 0x3;
 
-	return sysfs_emit(buf, "%d\n", val);
+	return sysfs_emit(buf, "%u\n", val);
 }
 
 static ssize_t
@@ -4238,7 +4237,7 @@ ts_window_adjust_show(struct device *dev,
 {
 	struct ptp_ocp *bp = dev_get_drvdata(dev);
 
-	return sysfs_emit(buf, "%d\n", bp->ts_window_adjust);
+	return sysfs_emit(buf, "%u\n", bp->ts_window_adjust);
 }
 
 static ssize_t
@@ -4268,7 +4267,7 @@ irig_b_mode_show(struct device *dev, struct device_attribute *attr, char *buf)
 
 	val = ioread32(&bp->irig_out->ctrl);
 	val = (val >> 16) & 0x07;
-	return sysfs_emit(buf, "%d\n", val);
+	return sysfs_emit(buf, "%u\n", val);
 }
 
 static ssize_t
@@ -4921,8 +4920,8 @@ _signal_summary_show(struct seq_file *s, struct ptp_ocp *bp, int nr)
 		return;
 
 	on = signal->running;
-	sprintf(label, "GEN%d", nr + 1);
-	seq_printf(s, "%7s: %s, period:%llu duty:%d%% phase:%llu pol:%d",
+	snprintf(label, sizeof(label), "GEN%i", nr + 1);
+	seq_printf(s, "%7s: %s, period:%lli duty:%i%% phase:%lli pol:%i",
 		   label, on ? " ON" : "OFF",
 		   signal->period, signal->duty, signal->phase,
 		   signal->polarity);
@@ -4932,7 +4931,7 @@ _signal_summary_show(struct seq_file *s, struct ptp_ocp *bp, int nr)
 	val = ioread32(&reg->status);
 	seq_printf(s, " %x]", val);
 
-	seq_printf(s, " start:%llu\n", signal->start);
+	seq_printf(s, " start:%lli\n", signal->start);
 }
 
 static void
@@ -5014,19 +5013,19 @@ ptp_ocp_summary_show(struct seq_file *s, void *data)
 	}
 
 	sma1_show(dev, NULL, buf);
-	seq_printf(s, "   sma1: %04x,%04x %s",
+	seq_printf(s, "   sma1: %04hx,%04hx %s",
 		   sma_val[0][0], sma_val[0][1], buf);
 
 	sma2_show(dev, NULL, buf);
-	seq_printf(s, "   sma2: %04x,%04x %s",
+	seq_printf(s, "   sma2: %04hx,%04hx %s",
 		   sma_val[1][0], sma_val[1][1], buf);
 
 	sma3_show(dev, NULL, buf);
-	seq_printf(s, "   sma3: %04x,%04x %s",
+	seq_printf(s, "   sma3: %04hx,%04hx %s",
 		   sma_val[2][0], sma_val[2][1], buf);
 
 	sma4_show(dev, NULL, buf);
-	seq_printf(s, "   sma4: %04x,%04x %s",
+	seq_printf(s, "   sma4: %04hx,%04hx %s",
 		   sma_val[3][0], sma_val[3][1], buf);
 
 	if (bp->ts0) {
@@ -5095,7 +5094,7 @@ ptp_ocp_summary_show(struct seq_file *s, void *data)
 		on = ctrl & IRIG_M_CTRL_ENABLE;
 		val = ioread32(&bp->irig_out->status);
 		gpio_output_map(buf, bp, sma_val, 4);
-		seq_printf(s, "%7s: %s, error: %d, mode %d, out: %s\n", "IRIG",
+		seq_printf(s, "%7s: %s, error: %u, mode %u, out: %s\n", "IRIG",
 			   on ? " ON" : "OFF", val, (ctrl >> 16), buf);
 	}
 
@@ -5103,7 +5102,7 @@ ptp_ocp_summary_show(struct seq_file *s, void *data)
 		on = ioread32(&bp->irig_in->ctrl) & IRIG_S_CTRL_ENABLE;
 		val = ioread32(&bp->irig_in->status);
 		gpio_input_map(buf, bp, sma_val, 4, NULL);
-		seq_printf(s, "%7s: %s, error: %d, src: %s\n", "IRIG in",
+		seq_printf(s, "%7s: %s, error: %u, src: %s\n", "IRIG in",
 			   on ? " ON" : "OFF", val, buf);
 	}
 
@@ -5111,7 +5110,7 @@ ptp_ocp_summary_show(struct seq_file *s, void *data)
 		on = ioread32(&bp->dcf_out->ctrl) & DCF_M_CTRL_ENABLE;
 		val = ioread32(&bp->dcf_out->status);
 		gpio_output_map(buf, bp, sma_val, 5);
-		seq_printf(s, "%7s: %s, error: %d, out: %s\n", "DCF",
+		seq_printf(s, "%7s: %s, error: %u, out: %s\n", "DCF",
 			   on ? " ON" : "OFF", val, buf);
 	}
 
@@ -5119,14 +5118,14 @@ ptp_ocp_summary_show(struct seq_file *s, void *data)
 		on = ioread32(&bp->dcf_in->ctrl) & DCF_S_CTRL_ENABLE;
 		val = ioread32(&bp->dcf_in->status);
 		gpio_input_map(buf, bp, sma_val, 5, NULL);
-		seq_printf(s, "%7s: %s, error: %d, src: %s\n", "DCF in",
+		seq_printf(s, "%7s: %s, error: %u, src: %s\n", "DCF in",
 			   on ? " ON" : "OFF", val, buf);
 	}
 
 	if (bp->nmea_out) {
 		on = ioread32(&bp->nmea_out->ctrl) & 1;
 		val = ioread32(&bp->nmea_out->status);
-		seq_printf(s, "%7s: %s, error: %d\n", "NMEA",
+		seq_printf(s, "%7s: %s, error: %u\n", "NMEA",
 			   on ? " ON" : "OFF", val);
 	}
 
@@ -5196,7 +5195,7 @@ ptp_ocp_summary_show(struct seq_file *s, void *data)
 
 		seq_printf(s, "%7s: %lld.%ld == %ptT TAI\n", "PHC",
 			   ts.tv_sec, ts.tv_nsec, &ts);
-		seq_printf(s, "%7s: %lld.%ld == %ptT UTC offset %d\n", "SYS",
+		seq_printf(s, "%7s: %lli.%li == %ptT UTC offset %u\n", "SYS",
 			   sys_ts.tv_sec, sys_ts.tv_nsec, &sys_ts,
 			   bp->utc_tai_offset);
 		seq_printf(s, "%7s: PHC:SYS offset: %lld  window: %lld\n", "",
@@ -5233,7 +5232,7 @@ ptp_ocp_tod_status_show(struct seq_file *s, void *data)
 	seq_printf(s, "GNSS %s\n", ptp_ocp_tod_gnss_name(idx));
 
 	val = ioread32(&bp->tod->version);
-	seq_printf(s, "TOD Version %d.%d.%d\n",
+	seq_printf(s, "TOD Version %u.%u.%u\n",
 		val >> 24, (val >> 16) & 0xff, val & 0xffff);
 
 	val = ioread32(&bp->tod->status);
@@ -5246,7 +5245,7 @@ ptp_ocp_tod_status_show(struct seq_file *s, void *data)
 
 	val = ioread32(&bp->tod->utc_status);
 	seq_printf(s, "UTC status register: 0x%08X\n", val);
-	seq_printf(s, "UTC offset: %d  valid:%d\n",
+	seq_printf(s, "UTC offset: %u  valid:%i\n",
 		val & TOD_STATUS_UTC_MASK, val & TOD_STATUS_UTC_VALID ? 1 : 0);
 	seq_printf(s, "Leap second info valid:%d, Leap second announce %d\n",
 		val & TOD_STATUS_LEAP_VALID ? 1 : 0,
@@ -5286,11 +5285,11 @@ ptp_ocp_tod_status_show(struct seq_file *s, void *data)
 	val = ioread32(&bp->tod->num_sat);
 	seq_printf(s, "Number of Satellites register: 0x%08X\n", val);
 
-	seq_printf(s, "Number of seen satellites: %d valid: %d\n",
+	seq_printf(s, "Number of seen satellites: %u valid: %i\n",
 		(val >> TOD_SAT_SEEN_SHIFT) & TOD_SAT_SEEN_MASK,
 		val & TOD_SAT_VAL ? 1 : 0);
 
-	seq_printf(s, "Number of locked satellites: %d valid: %d\n",
+	seq_printf(s, "Number of locked satellites: %u valid: %i\n",
 		(val >> TOD_SAT_LOCKED_SHIFT) & TOD_SAT_LOCKED_MASK,
 		val & TOD_SAT_VAL ? 1 : 0);
 
@@ -5451,7 +5450,7 @@ ptp_ocp_phc_info(struct ptp_ocp *bp)
 
 	version = ioread32(&bp->reg->version);
 	select = ioread32(&bp->reg->select);
-	dev_info(&bp->pdev->dev, "Version %d.%d.%d, clock %s, device ptp%d\n",
+	dev_info(&bp->pdev->dev, "Version %u.%u.%u, clock %s, device ptp%i\n",
 		 version >> 24, (version >> 16) & 0xff, version & 0xffff,
 		 ptp_ocp_select_name_from_val(ptp_ocp_clock, select >> 16),
 		 ptp_clock_index(bp->ptp));

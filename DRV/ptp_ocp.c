@@ -1128,6 +1128,20 @@ static struct ocp_resource ocp_art_resource[] = {
 		},
 	},
 	{
+		OCP_SERIAL_RESOURCE(port[PORT_GNSS2]),
+		.offset = 0x00170000, .irq_vec = 3,
+		.extra = &(struct ptp_ocp_serial_port) {
+			.baud = 115200,
+		},
+	},
+	{
+		OCP_SERIAL_RESOURCE(port[PORT_NMEA]),
+		.offset = 0x00180000, .irq_vec = 3,
+		.extra = &(struct ptp_ocp_serial_port) {
+			.baud = 115200,
+		},
+	},
+	{
 		OCP_MEM_RESOURCE(art_sma),
 		.offset = 0x003C0000, .size = 0x1000,
 	},
@@ -3337,15 +3351,18 @@ ptp_ocp_art_sma_init(struct ptp_ocp *bp)
 	int i;
 
 	/* defaults */
-	bp->sma[0].mode = SMA_MODE_IN;
-	bp->sma[1].mode = SMA_MODE_IN;
-	bp->sma[2].mode = SMA_MODE_OUT;
+	bp->sma[0].mode = SMA_MODE_OUT;
+	bp->sma[1].mode = SMA_MODE_OUT;
+	bp->sma[2].mode = SMA_MODE_IN;
 	bp->sma[3].mode = SMA_MODE_OUT;
 
-	bp->sma[0].default_fcn = 0x08;	/* IN: 10Mhz */
-	bp->sma[1].default_fcn = 0x01;	/* IN: PPS1 */
-	bp->sma[2].default_fcn = 0x10;	/* OUT: 10Mhz */
-	bp->sma[3].default_fcn = 0x02;	/* OUT: PHC */
+	bp->sma[0].default_fcn = 0x10;	/* OUT: 10Mhz */
+	bp->sma[1].default_fcn = 0x02;	/* OUT: MAC */
+	bp->sma[2].default_fcn = 0x01;	/*  IN: PPS1 */
+	bp->sma[3].default_fcn = 0x02;	/* OUT: MAC */
+
+	for (i = 0; i < 4; i++)
+	  iowrite32(bp->sma[i].default_fcn, &bp->art_sma->map[i].gpio);
 
 	/* If no SMA map, the pin functions and directions are fixed. */
 	if (!bp->art_sma) {

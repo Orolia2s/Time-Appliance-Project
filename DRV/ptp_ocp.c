@@ -5424,7 +5424,11 @@ ptp_ocp_complete(struct ptp_ocp *bp)
 
 	pps = pps_lookup_dev(bp->ptp);
 	if (pps)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 14, 0)
+		ptp_ocp_symlink(bp, pps->dev, "pps");
+#else
 		ptp_ocp_symlink(bp, &pps->dev, "pps");
+#endif
 
 	if (bp->mro50.name)
 		ptp_ocp_symlink(bp, bp->mro50.this_device, "mro50");
@@ -5578,7 +5582,11 @@ ptp_ocp_detach(struct ptp_ocp *bp)
 	ptp_ocp_debugfs_remove_device(bp);
 	ptp_ocp_detach_sysfs(bp);
 	if (timer_pending(&bp->watchdog))
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 15, 0)
+		del_timer_sync(&bp->watchdog);
+#else
 		timer_delete_sync(&bp->watchdog);
+#endif
 	if (bp->ts0)
 		ptp_ocp_unregister_ext(bp->ts0);
 	if (bp->ts1)

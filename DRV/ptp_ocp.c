@@ -2144,12 +2144,6 @@ fail:
 	goto out;
 }
 
-static int
-ptp_ocp_firstchild(struct device *, const void *)
-{
-	return 1;
-}
-
 static struct device *
 ptp_ocp_find_flash(struct ptp_ocp *bp)
 {
@@ -2158,7 +2152,7 @@ ptp_ocp_find_flash(struct ptp_ocp *bp)
 	last = NULL;
 	dev = &bp->spi_flash->dev;
 
-	while ((dev = device_find_child(dev, NULL, ptp_ocp_firstchild))) {
+	while ((dev = device_find_any_child(dev))) {
 		if (!strcmp("mtd", dev_bus_name(dev)))
 			break;
 		put_device(last);
